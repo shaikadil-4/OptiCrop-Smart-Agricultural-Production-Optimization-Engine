@@ -125,7 +125,5 @@ Apple, Orange, Papaya, Coconut, Cotton, Jute, Coffee
 
 ---
 
-## 👨‍💻 Author
 
-Sai Charan — SRM University AP  
-GitHub: [github.com/saicharan065](https://github.com/saicharan065)
+
