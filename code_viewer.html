@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OptiCrop Codebase Explorer</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Prism JS Theme -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface-sidebar: #161b22;
+      --surface-editor: #0d1117;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --green: #2ea44f;
+      --green-glow: rgba(46, 164, 79, 0.15);
+      --accent: #58a6ff;
+      --yellow: #d29922;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background-color: var(--surface-sidebar);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'Sora', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, #1a4731 0%, #2ea44f 100%);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+    }
+    .header-info {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 15px;
+    }
+    .header-info span i {
+      color: var(--green);
+      margin-right: 4px;
+    }
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    /* Sidebar styling */
+    .sidebar {
+      width: 280px;
+      background-color: var(--surface-sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      padding: 1rem 1.2rem 0.5rem;
+    }
+    .file-tree {
+      list-style: none;
+      padding: 0 0.5rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .file-tree li {
+      margin: 2px 0;
+    }
+    .folder-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      font-size: 0.88rem;
+      color: #e6edf3;
+      font-weight: 600;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 12px 6px 24px;
+      font-size: 0.85rem;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .file-item:hover {
+      background-color: rgba(255,255,255,0.05);
+      color: #fff;
+    }
+    .file-item.active {
+      background-color: var(--green-glow);
+      color: #fff;
+      border-left: 3px solid var(--green);
+    }
+    .file-icon {
+      font-size: 1rem;
+      width: 16px;
+      display: inline-block;
+      text-align: center;
+    }
+    .file-name {
+      flex: 1;
+    }
+    .file-badge {
+      font-size: 0.7rem;
+      background-color: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+    /* Editor area styling */
+    .editor-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--surface-editor);
+      overflow: hidden;
+    }
+    .editor-header {
+      background-color: #161b22;
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .active-file-title {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .active-file-desc {
+      font-size: 0.8rem;
+      color: var(--yellow);
+      background-color: rgba(210, 153, 34, 0.1);
+      border: 1px solid rgba(210, 153, 34, 0.25);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .code-container {
+      flex: 1;
+      overflow: auto;
+      padding: 1rem;
+      position: relative;
+    }
+    pre[class*="language-"] {
+      margin: 0;
+      background: transparent !important;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    code[class*="language-"] {
+      font-family: 'Fira Code', monospace;
+    }
+    /* Sidebar Footer containing stats */
+    .sidebar-footer {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      background-color: rgba(0,0,0,0.2);
+    }
+    .briefing-box {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .briefing-title {
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-logo">
+      <span>🌿</span> OptiCrop Codebase Explorer
+      <span class="logo-badge">Vercel Serverless Production</span>
+    </div>
+    <div class="header-info">
+      <span><i class="bi bi-cpu"></i> ML Model: Random Forest (92.57%)</span>
+      <span><i class="bi bi-file-code"></i> 11 Source Files</span>
+      <span><i class="bi bi-lightning-fill"></i> Flask + scikit-learn</span>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-title">Workspace Directory</div>
+      <ul class="file-tree">
+        <li>
+          <div class="folder-item"><i class="bi bi-folder-fill text-warning"></i> api</div>
+          <ul>
+            <li>
+              <div class="file-item" data-file="api-index" data-lang="python" data-desc="Vercel entrypoint redirecting to app.py">
+                <span><i class="bi bi-filetype-py text-info file-icon"></i> <span class="file-name">index.py</span></span>
+                <span class="file-badge">sys.path</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <div class="folder-item"><i class="bi bi-folder-fill text-warning"></i> model</div>
+          <ul>
+            <li>
+              <div class="file-item" data-file="model-train" data-lang="python" data-desc="Dataset generation, training and artifacts serialization">
+                <span><i class="bi bi-filetype-py text-info file-icon"></i> <span class="file-name">train_models.py</span></span>
+                <span class="file-badge">Train</span>
+              </div>
+            </li>
+            <li>
+              <div class="file-item" data-file="model-meta" data-lang="json" data-desc="JSON store containing crop profiles, model performance scores, and feature importances">
+                <span><i class="bi bi-filetype-json text-warning file-icon"></i> <span class="file-name">model_meta.json</span></span>
+                <span class="file-badge">Data</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <div class="folder-item"><i class="bi bi-folder-fill text-warning"></i> templates</div>
+          <ul>
+            <li>
+              <div class="file-item" data-file="template-base" data-lang="html" data-desc="Base shell layout with core css classes, responsive navbar, and layout footer">
+                <span><i class="bi bi-filetype-html text-danger file-icon"></i> <span class="file-name">base.html</span></span>
+                <span class="file-badge">Shell</span>
+              </div>
+            </li>
+            <li>
+              <div class="file-item" data-file="template-index" data-lang="html" data-desc="Homepage visual layout describing crop parameters and scenarios">
+                <span><i class="bi bi-filetype-html text-danger file-icon"></i> <span class="file-name">index.html</span></span>
+                <span class="file-badge">Home</span>
+              </div>
+            </li>
+            <li>
+              <div class="file-item" data-file="template-predict" data-lang="html" data-desc="Crop recommendation form, presets filling, and top-3 results display">
+                <span><i class="bi bi-filetype-html text-danger file-icon"></i> <span class="file-name">predict.html</span></span>
+                <span class="file-badge">Rec</span>
+              </div>
+            </li>
+            <li>
+              <div class="file-item" data-file="template-suitability" data-lang="html" data-desc="Crop suitability evaluation form, visual gauge ring, and parameter gap diagnostics list">
+                <span><i class="bi bi-filetype-html text-danger file-icon"></i> <span class="file-name">suitability.html</span></span>
+                <span class="file-badge">Assess</span>
+              </div>
+            </li>
+            <li>
+              <div class="file-item" data-file="template-research" data-lang="html" data-desc="Policy planner & analytics dashboard, Chart.js graphs, profiles, and API guidelines">
+                <span><i class="bi bi-filetype-html text-danger file-icon"></i> <span class="file-name">research.html</span></span>
+                <span class="file-badge">Charts</span>
+              </div>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <div class="file-item" data-file="app-py" data-lang="python" data-desc="Primary Flask application containing prediction routes, suitability engine, and API logic">
+            <span><i class="bi bi-filetype-py text-info file-icon"></i> <span class="file-name">app.py</span></span>
+            <span class="file-badge">App</span>
+          </div>
+        </li>
+        <li>
+          <div class="file-item" data-file="vercel-json" data-lang="json" data-desc="Vercel deployment rewrite rules mapped to serverless API">
+            <span><i class="bi bi-filetype-json text-warning file-icon"></i> <span class="file-name">vercel.json</span></span>
+            <span class="file-badge">Deploy</span>
+          </div>
+        </li>
+        <li>
+          <div class="file-item" data-file="requirements-txt" data-lang="none" data-desc="Production python dependencies list">
+            <span><i class="bi bi-file-earmark-text text-muted file-icon"></i> <span class="file-name">requirements.txt</span></span>
+            <span class="file-badge">Deps</span>
+          </div>
+        </li>
+      </ul>
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="briefing-title">File Details</div>
+        <div class="briefing-box" id="fileBriefing">
+          Select a file to inspect its content, functions, structure and implementation notes.
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Editor Panel -->
+    <div class="editor-area">
+      <div class="editor-header">
+        <div class="active-file-title" id="activeFileTitle">
+          <i class="bi bi-file-code text-info"></i> Select a file
+        </div>
+        <div class="active-file-desc" id="activeFileDesc">
+          Ready
+        </div>
+      </div>
+      <div class="code-container">
+        <pre><code class="language-python" id="codeEditor"># Welcome to OptiCrop Codebase Explorer.
+# Select a file on the left side to view its source code.
+# The code is fully highlighted and includes comments explaining the details.</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN SOURCE CODE BLOCKS FOR SECURE INJECTION -->
+
+  <!-- index.py -->
+  <pre id="src-api-index" style="display:none;">import sys
+import os
+
+# Add the parent directory (project root) to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Import the Flask application instance
+from app import app</pre>
+
+  <!-- vercel.json -->
+  <pre id="src-vercel-json" style="display:none;">{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.py"
+    }
+  ]
+}</pre>
+
+  <!-- requirements.txt -->
+  <pre id="src-requirements-txt" style="display:none;">flask>=2.3.0
+scikit-learn>=1.3.0
+numpy>=1.24.0</pre>
+
+  <!-- app.py -->
+  <pre id="src-app-py" style="display:none;">"""
+OptiCrop — Flask Application
+Routes: /, /predict, /suitability, /research, /api/predict
+"""
+
+from flask import Flask, render_template, request, jsonify
+import numpy as np
+import pickle
+import json
+import os
+
+app = Flask(__name__)
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+def load_artifacts():
+    with open(os.path.join(BASE, 'model/crop_model.pkl'),   'rb') as f: model  = pickle.load(f)
+    with open(os.path.join(BASE, 'model/scaler.pkl'),        'rb') as f: scaler = pickle.load(f)
+    with open(os.path.join(BASE, 'model/label_encoder.pkl'), 'rb') as f: le     = pickle.load(f)
+    with open(os.path.join(BASE, 'model/model_meta.json'))       as f: meta   = json.load(f)
+    return model, scaler, le, meta
+
+model, scaler, le, meta = load_artifacts()
+
+CROP_ICONS = {
+    'Rice':'🌾','Wheat':'🌾','Maize':'🌽','Chickpea':'🫘','KidneyBeans':'🫘',
+    'PigeonPeas':'🫘','MothBeans':'🫘','MungBeans':'🫘','Blackgram':'🫘',
+    'Lentil':'🫘','Pomegranate':'🍎','Banana':'🍌','Mango':'🥭','Grapes':'🍇',
+    'Watermelon':'🍉','Muskmelon':'🍈','Apple':'🍎','Orange':'🍊','Papaya':'🍈',
+    'Coconut':'🥥','Cotton':'🌿','Jute':'🌿','Coffee':'☕'
+}
+
+CROP_TIPS = {
+    'Rice':        'Requires standing water; grow in lowland fields with good water retention.',
+    'Wheat':       'Best sown in cool weather; ensure well-drained loamy soil.',
+    'Maize':       'Plant in full sun; avoid waterlogging.',
+    'Chickpea':    'Drought-tolerant legume; fix nitrogen naturally in soil.',
+    'KidneyBeans': 'Needs warm soil; avoid over-watering to prevent root rot.',
+    'PigeonPeas':  'Deep-rooted; excellent for dry semi-arid regions.',
+    'MothBeans':   'Extremely drought-hardy; thrives in sandy soils.',
+    'MungBeans':   'Short-duration crop; ideal for intercropping.',
+    'Blackgram':   'Grows well in humid conditions; good protein source.',
+    'Lentil':      'Cool-season crop; harvest before temperatures rise.',
+    'Pomegranate': 'Frost-sensitive; prune regularly for best fruit yield.',
+    'Banana':      'Heavy feeder; needs potassium-rich soil and consistent moisture.',
+    'Mango':       'Deep taproot; minimal water once established.',
+    'Grapes':      'Train on trellises; harvest in late summer.',
+    'Watermelon':  'Needs hot days; plant after last frost in sandy loam.',
+    'Muskmelon':   'High humidity tolerance; direct sun essential.',
+    'Apple':       'Requires chill hours; cold winters improve fruit quality.',
+    'Orange':      'Subtropical; protect from frost with windbreaks.',
+    'Papaya':      'Fast-growing; harvest within 9 months of planting.',
+    'Coconut':     'Coastal favourite; salt-tolerant and wind-resistant.',
+    'Cotton':      'Long growing season; monitor for bollworms.',
+    'Jute':        'Grown in flood-plains; harvested at flowering stage.',
+    'Coffee':      'Shade-grown produces better flavour; avoid direct midday sun.',
+}
+
+def parse_inputs(form):
+    return np.array([[
+        float(form['nitrogen']),
+        float(form['phosphorous']),
+        float(form['potassium']),
+        float(form['temperature']),
+        float(form['humidity']),
+        float(form['ph']),
+        float(form['rainfall']),
+    ]])
+
+def predict_crop(inputs):
+    scaled = scaler.transform(inputs)
+    proba  = model.predict_proba(scaled)[0]
+    top3_idx = np.argsort(proba)[::-1][:3]
+    top3 = [(le.classes_[i], round(proba[i]*100, 1)) for i in top3_idx]
+    return top3[0][0], top3[0][1], top3
+
+def assess_suitability(crop, inputs):
+    profiles = meta['crop_profiles']
+    if crop not in profiles:
+        return None, []
+    p = profiles[crop]
+    profile_keys = ['N','P','K','temp','hum','ph','rain']
+    feat_names   = ['N','P','K','temperature','humidity','ph','rainfall']
+    vals = inputs[0]
+    issues, scores = [], []
+    for i, (feat, pkey) in enumerate(zip(feat_names, profile_keys)):
+        lo, hi = p[pkey]
+        v = vals[i]
+        if lo <= v <= hi:
+            scores.append(1.0)
+        else:
+            gap     = min(abs(v-lo), abs(v-hi))
+            rng     = hi - lo
+            penalty = min(gap/(rng+1e-9), 1.0)
+            scores.append(max(0, 1-penalty))
+            direction = "low" if v < lo else "high"
+            issues.append(f"{feat} is {direction} ({v:.1f}; ideal {lo}–{hi})")
+    return round(np.mean(scores)*100, 1), issues
+
+@app.route('/')
+def index():
+    return render_template('index.html', meta=meta)
+
+@app.route('/predict', methods=['GET','POST'])
+def predict():
+    result = None
+    if request.method == 'POST':
+        try:
+            inputs = parse_inputs(request.form)
+            best_crop, confidence, top3 = predict_crop(inputs)
+            result = {
+                'crop':       best_crop,
+                'confidence': confidence,
+                'icon':       CROP_ICONS.get(best_crop, '🌱'),
+                'tip':        CROP_TIPS.get(best_crop, ''),
+                'top3':       top3,
+                'inputs':     {k: float(request.form[k]) for k in
+                               ['nitrogen','phosphorous','potassium',
+                                'temperature','humidity','ph','rainfall']},
+            }
+        except Exception as e:
+            result = {'error': str(e)}
+    return render_template('predict.html', result=result, meta=meta)
+
+@app.route('/suitability', methods=['GET','POST'])
+def suitability():
+    result = None
+    if request.method == 'POST':
+        try:
+            inputs = parse_inputs(request.form)
+            crop   = request.form['crop']
+            suit, issues = assess_suitability(crop, inputs)
+            level = ('Excellent' if suit>=80 else
+                     'Good'      if suit>=60 else
+                     'Moderate'  if suit>=40 else 'Poor')
+            result = {
+                'crop':        crop,
+                'suitability': suit,
+                'level':       level,
+                'issues':      issues,
+                'icon':        CROP_ICONS.get(crop,'🌱'),
+                'tip':         CROP_TIPS.get(crop,''),
+            }
+        except Exception as e:
+            result = {'error': str(e)}
+    return render_template('suitability.html',
+                           result=result, crops=meta['crops'], meta=meta)
+
+@app.route('/research')
+def research():
+    return render_template('research.html', meta=meta)
+
+@app.route('/api/predict', methods=['POST'])
+def api_predict():
+    data = request.get_json()
+    try:
+        inputs = np.array([[data['N'],data['P'],data['K'],
+                            data['temperature'],data['humidity'],
+                            data['ph'],data['rainfall']]])
+        crop, confidence, top3 = predict_crop(inputs)
+        return jsonify({'crop':crop,'confidence':confidence,
+                        'top3':[{'crop':c,'probability':p} for c,p in top3]})
+    except Exception as e:
+        return jsonify({'error':str(e)}), 400
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)</pre>
+
+  <!-- train_models.py -->
+  <pre id="src-model-train" style="display:none;">"""
+OptiCrop - ML Model Training Pipeline
+Trains KNN, Logistic Regression, Decision Tree, Random Forest, K-Means
+Selects best model and saves as .pkl
+"""
+
+import numpy as np
+import pandas as pd
+import pickle
+import os
+import json
+import warnings
+warnings.filterwarnings('ignore')
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.normpath(os.path.join(BASE, '..'))
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
+MODEL_DIR = os.path.join(PROJECT_ROOT, 'model')
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
+
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.cluster import KMeans
+from sklearn.metrics import (accuracy_score, classification_report,
+                             confusion_matrix, f1_score)
+
+np.random.seed(42)
+
+CROPS = [
+    'Rice', 'Wheat', 'Maize', 'Chickpea', 'KidneyBeans', 'PigeonPeas',
+    'MothBeans', 'MungBeans', 'Blackgram', 'Lentil', 'Pomegranate',
+    'Banana', 'Mango', 'Grapes', 'Watermelon', 'Muskmelon', 'Apple',
+    'Orange', 'Papaya', 'Coconut', 'Cotton', 'Jute', 'Coffee'
+]
+
+CROP_PROFILES = {
+    'Rice':         dict(N=(60,100),  P=(35,55),  K=(35,55),  temp=(20,30), hum=(70,90), ph=(5.5,7.0), rain=(150,300)),
+    'Wheat':        dict(N=(60,100),  P=(40,60),  K=(40,60),  temp=(10,25), hum=(50,70), ph=(5.5,7.5), rain=(50,100)),
+    'Maize':        dict(N=(60,110),  P=(35,60),  K=(40,65),  temp=(18,30), hum=(55,75), ph=(5.5,7.5), rain=(50,100)),
+    'Chickpea':     dict(N=(30,60),   P=(55,80),  K=(55,80),  temp=(15,25), hum=(15,40), ph=(6.0,8.0), rain=(30,80)),
+    'KidneyBeans':  dict(N=(15,35),   P=(55,80),  K=(15,25),  temp=(15,25), hum=(15,50), ph=(5.5,7.0), rain=(20,60)),
+    'PigeonPeas':   dict(N=(15,35),   P=(55,80),  K=(15,25),  temp=(18,30), hum=(30,60), ph=(5.5,7.0), rain=(30,70)),
+    'MothBeans':    dict(N=(15,35),   P=(35,55),  K=(30,50),  temp=(25,35), hum=(25,50), ph=(6.0,8.0), rain=(30,70)),
+    'MungBeans':    dict(N=(15,35),   P=(35,55),  K=(15,25),  temp=(25,35), hum=(30,60), ph=(6.0,7.5), rain=(30,70)),
+    'Blackgram':    dict(N=(30,50),   P=(55,80),  K=(15,25),  temp=(25,35), hum=(30,70), ph=(5.5,7.5), rain=(30,70)),
+    'Lentil':       dict(N=(15,35),   P=(55,80),  K=(15,25),  temp=(10,25), hum=(40,65), ph=(5.5,7.5), rain=(30,80)),
+    'Pomegranate':  dict(N=(15,35),   P=(15,25),  K=(15,25),  temp=(18,32), hum=(80,95), ph=(5.5,7.5), rain=(100,200)),
+    'Banana':       dict(N=(80,120),  P=(55,80),  K=(45,65),  temp=(22,32), hum=(70,90), ph=(5.5,7.0), rain=(100,200)),
+    'Mango':        dict(N=(15,25),   P=(15,25),  K=(15,25),  temp=(22,35), hum=(45,65), ph=(5.5,7.5), rain=(50,100)),
+    'Grapes':       dict(N=(15,25),   P=(15,25),  K=(35,55),  temp=(8,32),  hum=(60,80), ph=(5.5,7.5), rain=(50,100)),
+    'Watermelon':   dict(N=(80,120),  P=(55,80),  K=(40,60),  temp=(24,35), hum=(60,85), ph=(5.5,7.5), rain=(40,80)),
+    'Muskmelon':    dict(N=(80,120),  P=(55,80),  K=(40,60),  temp=(24,35), hum=(75,95), ph=(6.0,7.5), rain=(20,40)),
+    'Apple':        dict(N=(15,25),   P=(120,145),K=(195,210),temp=(1,20),  hum=(85,95), ph=(5.5,7.0), rain=(100,125)),
+    'Orange':       dict(N=(15,25),   P=(15,25),  K=(15,25),  temp=(10,30), hum=(90,95), ph=(6.0,7.5), rain=(100,150)),
+    'Papaya':       dict(N=(45,65),   P=(35,55),  K=(45,65),  temp=(25,35), hum=(85,95), ph=(6.0,7.5), rain=(150,200)),
+    'Coconut':      dict(N=(15,25),   P=(15,25),  K=(15,25),  temp=(22,35), hum=(85,95), ph=(5.5,7.0), rain=(100,200)),
+    'Cotton':       dict(N=(100,140), P=(35,55),  K=(15,25),  temp=(22,36), hum=(55,75), ph=(6.0,8.0), rain=(60,110)),
+    'Jute':         dict(N=(60,100),  P=(35,55),  K=(35,55),  temp=(22,36), hum=(60,90), ph=(6.0,7.0), rain=(150,250)),
+    'Coffee':       dict(N=(80,120),  P=(15,25),  K=(25,45),  temp=(15,28), hum=(85,95), ph=(3.5,6.5), rain=(100,300)),
+}
+
+def generate_dataset(n_per_crop=100):
+    rows = []
+    for crop, p in CROP_PROFILES.items():
+        for _ in range(n_per_crop):
+            row = {
+                'N':           np.random.uniform(*p['N']),
+                'P':           np.random.uniform(*p['P']),
+                'K':           np.random.uniform(*p['K']),
+                'temperature': np.random.uniform(*p['temp']),
+                'humidity':    np.random.uniform(*p['hum']),
+                'ph':          np.random.uniform(*p['ph']),
+                'rainfall':    np.random.uniform(*p['rain']),
+                'label':       crop
+            }
+            rows.append(row)
+    df = pd.DataFrame(rows)
+    df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+    return df
+
+def preprocess(df):
+    le = LabelEncoder()
+    df['crop_encoded'] = le.fit_transform(df['label'])
+    features = ['N','P','K','temperature','humidity','ph','rainfall']
+    X = df[features].values
+    y = df['crop_encoded'].values
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    return X_scaled, y, scaler, le
+
+def train_all_models(X_train, X_test, y_train, y_test):
+    models = {
+        'KNN':                 KNeighborsClassifier(n_neighbors=5),
+        'Logistic Regression': LogisticRegression(max_iter=1000, random_state=42),
+        'Decision Tree':       DecisionTreeClassifier(random_state=42, max_depth=15),
+        'Random Forest':       RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1),
+    }
+    results = {}
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        acc  = accuracy_score(y_test, y_pred)
+        f1   = f1_score(y_test, y_pred, average='weighted')
+        cv   = cross_val_score(model, X_train, y_train, cv=5, scoring='accuracy').mean()
+        results[name] = {
+            'model':    model,
+            'accuracy': round(acc  * 100, 2),
+            'f1':       round(f1   * 100, 2),
+            'cv_score': round(cv   * 100, 2),
+        }
+        print(f"  {name:22s} | Acc: {acc*100:.2f}%  F1: {f1*100:.2f}%  CV: {cv*100:.2f}%")
+    return results
+
+def run_kmeans(X_scaled, n_clusters=23):
+    km = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+    km.fit(X_scaled)
+    return km
+
+if __name__ == '__main__':
+    print("═"*60)
+    print("  OptiCrop — ML Training Pipeline")
+    print("═"*60)
+
+    print("\n[1/5] Generating dataset …")
+    df = generate_dataset(n_per_crop=120)
+    df.to_csv(os.path.join(DATA_DIR, 'crop_data.csv'), index=False)
+    print(f"      {len(df)} records | {df['label'].nunique()} crops")
+
+    print("\n[2/5] Preprocessing …")
+    X_scaled, y, scaler, le = preprocess(df)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, y, test_size=0.2, random_state=42, stratify=y)
+    print(f"      Train: {len(X_train)}  |  Test: {len(X_test)}")
+
+    print("\n[3/5] Training models …")
+    results = train_all_models(X_train, X_test, y_train, y_test)
+
+    best_name = max(results, key=lambda k: results[k]['accuracy'])
+    best_model = results[best_name]['model']
+    print(f"\n[4/5] Best model → {best_name} ({results[best_name]['accuracy']}% )")
+
+    print("\n[5/5] Saving artefacts …")
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    with open(os.path.join(MODEL_DIR, 'crop_model.pkl'),  'wb') as f: pickle.dump(best_model, f)
+    with open(os.path.join(MODEL_DIR, 'scaler.pkl'),      'wb') as f: pickle.dump(scaler,     f)
+    with open(os.path.join(MODEL_DIR, 'label_encoder.pkl'),'wb') as f: pickle.dump(le,         f)
+
+    km = run_kmeans(X_scaled)
+    with open(os.path.join(MODEL_DIR, 'kmeans.pkl'), 'wb') as f: pickle.dump(km, f)
+
+    model_metrics = {
+        k: {'accuracy': v['accuracy'], 'f1': v['f1'], 'cv_score': v['cv_score']}
+        for k, v in results.items()
+    }
+    model_metrics['best_model'] = best_name
+
+    feature_importances = {}
+    if hasattr(best_model, 'feature_importances_'):
+        features = ['N','P','K','temperature','humidity','ph','rainfall']
+        for f, imp in zip(features, best_model.feature_importances_):
+            feature_importances[f] = round(float(imp)*100, 2)
+
+    meta = {
+        'best_model':          best_name,
+        'accuracy':            results[best_name]['accuracy'],
+        'f1':                  results[best_name]['f1'],
+        'cv_score':            results[best_name]['cv_score'],
+        'crops':               CROPS,
+        'features':            ['N','P','K','temperature','humidity','ph','rainfall'],
+        'model_metrics':       model_metrics,
+        'feature_importances': feature_importances,
+        'crop_profiles':       {k: {kk: list(vv) for kk, vv in v.items()}
+                                for k, v in CROP_PROFILES.items()},
+    }
+    with open(os.path.join(MODEL_DIR, 'model_meta.json'), 'w') as f:
+        json.dump(meta, f, indent=2)
+
+    print("\n  crop_model.pkl   ✓")
+    print("  scaler.pkl       ✓")
+    print("  label_encoder.pkl✓")
+    print("  kmeans.pkl       ✓")
+    print("  model_meta.json  ✓")
+    print("\n" + "═"*60)
+    print("  Training complete!")
+    print("═"*60)</pre>
+
+  <!-- model_meta.json -->
+  <pre id="src-model-meta" style="display:none;">{
+  "best_model": "Random Forest",
+  "accuracy": 92.57,
+  "f1": 92.48,
+  "cv_score": 91.85,
+  "crops": [
+    "Rice",
+    "Wheat",
+    "Maize",
+    "Chickpea",
+    "KidneyBeans",
+    "PigeonPeas",
+    "MothBeans",
+    "MungBeans",
+    "Blackgram",
+    "Lentil",
+    "Pomegranate",
+    "Banana",
+    "Mango",
+    "Grapes",
+    "Watermelon",
+    "Muskmelon",
+    "Apple",
+    "Orange",
+    "Papaya",
+    "Coconut",
+    "Cotton",
+    "Jute",
+    "Coffee"
+  ],
+  "features": [
+    "N",
+    "P",
+    "K",
+    "temperature",
+    "humidity",
+    "ph",
+    "rainfall"
+  ],
+  "model_metrics": {
+    "KNN": {
+      "accuracy": 85.87,
+      "f1": 85.68,
+      "cv_score": 85.87
+    },
+    "Logistic Regression": {
+      "accuracy": 84.96,
+      "f1": 84.78,
+      "cv_score": 87.41
+    },
+    "Decision Tree": {
+      "accuracy": 89.31,
+      "f1": 89.34,
+      "cv_score": 88.27
+    },
+    "Random Forest": {
+      "accuracy": 92.57,
+      "f1": 92.48,
+      "cv_score": 91.85
+    },
+    "best_model": "Random Forest"
+  },
+  "feature_importances": {
+    "N": 16.14,
+    "P": 18.86,
+    "K": 15.68,
+    "temperature": 11.96,
+    "humidity": 16.0,
+    "ph": 5.13,
+    "rainfall": 16.23
+  }
+}</pre>
+
+  <!-- base.html -->
+  <pre id="src-template-base" style="display:none;">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+  &lt;title&gt;{% block title %}OptiCrop{% endblock %} — Smart Agricultural Optimization&lt;/title&gt;
+  &lt;link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"&gt;
+  &lt;link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet"&gt;
+  &lt;link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Sora:wght@600;700&amp;display=swap" rel="stylesheet"&gt;
+  &lt;style&gt;
+    :root {
+      --green-dark:  #1a4731;
+      --green-mid:   #2d7a4f;
+      --green-light: #4aad73;
+      --green-pale:  #e8f5ee;
+      --amber:       #e8a020;
+      --text:        #1c2b22;
+      --border:      #d4e6da;
+      --surface:     #f7faf8;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--surface);
+      color: var(--text);
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;nav class="navbar navbar-expand-lg navbar-dark bg-dark"&gt;
+    &lt;!-- Navbar with Home, Recommend, Suitability, Research links --&gt;
+  &lt;/nav&gt;
+  {% block content %}{% endblock %}
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+
+  <!-- index.html -->
+  <pre id="src-template-index" style="display:none;">{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+&lt;!-- Hero Section with AI-Powered Agriculture banner --&gt;
+&lt;section class="hero"&gt;
+  &lt;h1&gt;Smart Crop Recommendations for Maximum Yield&lt;/h1&gt;
+  &lt;p&gt;OptiCrop leverages machine learning to analyze soil nutrients, climate, and environmental conditions.&lt;/p&gt;
+&lt;/section&gt;
+&lt;!-- Three Intelligent Scenarios: Recommend, Suitability, Research --&gt;
+{% endblock %}</pre>
+
+  <!-- predict.html -->
+  <pre id="src-template-predict" style="display:none;">{% extends "base.html" %}
+{% block title %}Crop Recommendation{% endblock %}
+{% block content %}
+&lt;!-- Recommend Page Form --&gt;
+&lt;form method="POST"&gt;
+  &lt;!-- Inputs: Nitrogen, Phosphorous, Potassium, Temperature, Humidity, pH, Rainfall --&gt;
+  &lt;button type="submit"&gt;Recommend Best Crop&lt;/button&gt;
+&lt;/form&gt;
+&lt;!-- Results panel showing best crop, confidence, farming tip, and top 3 candidates --&gt;
+{% endblock %}</pre>
+
+  <!-- suitability.html -->
+  <pre id="src-template-suitability" style="display:none;">{% extends "base.html" %}
+{% block title %}Crop Suitability{% endblock %}
+{% block content %}
+&lt;!-- Suitability assessment inputs for target crop evaluation --&gt;
+&lt;!-- Outputs suitability gauge ring and parameter gap diagnostics --&gt;
+{% endblock %}</pre>
+
+  <!-- research.html -->
+  <pre id="src-template-research" style="display:none;">{% extends "base.html" %}
+{% block title %}Research &amp; Analytics{% endblock %}
+{% block content %}
+&lt;!-- KPI metrics --&gt;
+&lt;!-- Model accuracy comparison chart (Chart.js) --&gt;
+&lt;!-- Feature importances doughnut chart (Chart.js) --&gt;
+&lt;!-- JSON API reference documentation --&gt;
+{% endblock %}</pre>
+
+
+  <!-- Prism JS and Highlight Execution -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const fileItems = document.querySelectorAll(".file-item");
+      const activeFileTitle = document.getElementById("activeFileTitle");
+      const activeFileDesc = document.getElementById("activeFileDesc");
+      const codeEditor = document.getElementById("codeEditor");
+      const fileBriefing = document.getElementById("fileBriefing");
+
+      const iconMap = {
+        'python': '<i class="bi bi-filetype-py text-info"></i>',
+        'json': '<i class="bi bi-filetype-json text-warning"></i>',
+        'html': '<i class="bi bi-filetype-html text-danger"></i>',
+        'none': '<i class="bi bi-file-earmark-text text-muted"></i>'
+      };
+
+      fileItems.forEach(item => {
+        item.addEventListener("click", (e) => {
+          e.preventDefault();
+          
+          // Remove active class from all
+          fileItems.forEach(i => i.classList.remove("active"));
+          
+          // Add active class to clicked
+          item.classList.add("active");
+          
+          const fileId = item.getAttribute("data-file");
+          const lang = item.getAttribute("data-lang");
+          const desc = item.getAttribute("data-desc");
+          const fileName = item.querySelector(".file-name").textContent;
+          
+          // Get source code
+          const srcElement = document.getElementById(`src-${fileId}`);
+          if (srcElement) {
+            codeEditor.textContent = srcElement.textContent;
+            codeEditor.className = ""; // clear old language classes
+            if (lang !== "none") {
+              codeEditor.classList.add(`language-${lang}`);
+            } else {
+              codeEditor.classList.add(`language-none`);
+            }
+            
+            // Re-highlight using Prism
+            Prism.highlightElement(codeEditor);
+            
+            // Update Headers
+            activeFileTitle.innerHTML = `${iconMap[lang] || '<i class="bi bi-file-code"></i>'} ${fileName}`;
+            activeFileDesc.textContent = lang.toUpperCase();
+            fileBriefing.textContent = desc;
+          }
+        });
+      });
+
+      // Load first file as default
+      const defaultFile = document.querySelector('[data-file="app-py"]');
+      if (defaultFile) {
+        defaultFile.click();
+      }
+    });
+  </script>
+</body>
+</html>
